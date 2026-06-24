@@ -24,7 +24,7 @@ export default function BookingCTA({ servicios, config }: { servicios: Servicio[
   const filtrados = tab === 'TODOS' ? servicios : servicios.filter((s) => s.categoria === tab);
 
   return (
-    <section id="precios" className="border-y border-white/5 bg-ink-900/50 py-24">
+    <section id="citas" className="border-y border-white/5 bg-ink-900/50 py-24">
       <div className="mx-auto max-w-7xl px-5">
         <div className="text-center">
           <span className="section-eyebrow">Precios & reservas</span>
@@ -60,7 +60,7 @@ export default function BookingCTA({ servicios, config }: { servicios: Servicio[
           </div>
 
           {/* CTA de reserva */}
-          <div id="citas" className="lg:col-span-2">
+          <div className="lg:col-span-2">
             <div className="card-dark relative overflow-hidden p-7">
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold/10 blur-3xl" />
               <h3 className="font-display text-2xl font-bold text-white">¿List@ para tu cambio de look?</h3>

@@ -6,6 +6,11 @@
   html {
     scroll-behavior: smooth;
   }
+  /* Compensa el navbar fijo: al ir a una sección no queda tapada por el header */
+  section[id],
+  footer[id] {
+    scroll-margin-top: 6rem;
+  }
   body {
     @apply bg-ink text-gray-100 font-sans antialiased;
   }
