@@ -25,6 +25,13 @@ backend/src/uploads/**/*
 
 # Logs y temporales
 *.log
+*.log.err
+*.err
+server.log*
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Artefactos de build TS
+*.tsbuildinfo
+**/*.tsbuildinfo

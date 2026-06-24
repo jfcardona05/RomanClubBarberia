@@ -17,9 +17,10 @@ export const resumen = asyncHandler(async (req, res) => {
     FROM citas WHERE fecha = CURDATE() ${filtroCita}
     GROUP BY estado
   `, p);
-  const citasHoy = { PENDIENTE: 0, CONFIRMADA: 0, CANCELADA: 0, COMPLETADA: 0, REAGENDADA: 0 };
-  hoy.forEach((r) => { citasHoy[r.estado] = r.total; });
-  const totalHoy = Object.values(citasHoy).reduce((a, b) => a + b, 0);
+  const citasHoy = { PENDIENTE: 0, COMPLETADA: 0, CANCELADA: 0 };
+  hoy.forEach((r) => { if (r.estado in citasHoy) citasHoy[r.estado] = r.total; });
+  // "Citas hoy" = solo las activas (agendadas + completadas), SIN contar las canceladas
+  const totalHoy = citasHoy.PENDIENTE + citasHoy.COMPLETADA;
 
   // Ingresos del día y del mes (servicios_realizados)
   const [[ingresoDia]] = await pool.query(`
@@ -109,8 +110,11 @@ export const reportes = asyncHandler(async (req, res) => {
      WHERE cs.id_cita = c.id_cita)`;
 
   // UNA fila por cita (no separadas): muestra abono online + resto en local + método del resto.
-  // Incluye citas completadas y/o con pago en línea.
-  const w = ["(c.estado = 'COMPLETADA' OR c.estado_pago IN ('ABONADO','PAGADO'))"];
+  // Incluye citas completadas y/o con pago en línea. NUNCA canceladas.
+  const w = [
+    "c.estado <> 'CANCELADA'",
+    "(c.estado = 'COMPLETADA' OR c.estado_pago IN ('ABONADO','PAGADO'))",
+  ];
   const p = [];
   if (desde) { w.push('c.fecha >= ?'); p.push(desde); }
   if (hasta) { w.push('c.fecha <= ?'); p.push(hasta); }

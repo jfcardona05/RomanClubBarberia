@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Printer } from 'lucide-react';
 import { dashboardApi, usuariosApi, serviciosApi } from '../../services';
 import { getApiError } from '../../services/api';
 import type { Usuario, Servicio } from '../../types';
 import { useAuth } from '../../services/AuthContext';
 import { useToast } from '../../components/Toast';
-import { Badge, Button, Card, EmptyState, LoadingSpinner, Select } from '../../components/ui';
+import { Card, EmptyState, LoadingSpinner, Select } from '../../components/ui';
 import { formatCOP, formatFecha, formatHora } from '../../utils/format';
 
 type Periodo = 'DIA' | 'SEMANA' | 'MES';
@@ -29,16 +28,6 @@ function rangoPeriodo(p: Periodo): { desde: string; hasta: string } {
   return { desde: ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: ymd(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)) };
 }
 const periodoLabel: Record<Periodo, string> = { DIA: 'Hoy', SEMANA: 'Esta semana', MES: 'Este mes' };
-
-// Texto del pago para una fila (abono/resto/método)
-function detallePago(p: Pago): string {
-  if (p.online > 0 && p.tipo_pago === 'ABONO') {
-    if (p.local > 0) return `Abonó ${formatCOP(p.online)} online · resto ${formatCOP(p.local)} en ${p.metodo_local || 'local'}`;
-    return `Abonó ${formatCOP(p.online)} online · falta ${formatCOP(p.pendiente)} (pendiente)`;
-  }
-  if (p.online > 0 && p.tipo_pago === 'TOTAL') return `Pagó todo online: ${formatCOP(p.online)}`;
-  return `En el local: ${formatCOP(p.local)} (${p.metodo_local || '—'})`; // sin pago online (llamada/WhatsApp)
-}
 
 export default function ReportsPage() {
   const { user } = useAuth();
@@ -68,58 +57,11 @@ export default function ReportsPage() {
   };
   useEffect(cargar, [periodo, idEmpleado, idServicio]);
 
-  const imprimir = () => {
-    if (!data) return;
-    const { desde, hasta } = rangoPeriodo(periodo);
-    const profTxt = idEmpleado ? (empleados.find((e) => String(e.id_usuario) === idEmpleado)?.nombre || '') : 'Todos';
-    const servTxt = idServicio ? (servicios.find((s) => String(s.id_servicio) === idServicio)?.nombre || '') : 'Todos';
-    const filas = data.historialPagos.map((p) => `
-      <tr>
-        <td>${formatFecha(String(p.fecha).slice(0, 10))} ${p.hora_inicio ? formatHora(p.hora_inicio) : ''}</td>
-        <td>${p.nombre_cliente || ''}</td>
-        <td>${p.servicio || ''}</td>
-        <td>${p.profesional || ''}</td>
-        <td style="text-align:right">${formatCOP(p.online)}</td>
-        <td style="text-align:right">${p.local > 0 ? formatCOP(p.local) : (p.pendiente > 0 ? 'Pend. ' + formatCOP(p.pendiente) : '—')}</td>
-        <td>${p.local > 0 ? (p.metodo_local || '') : ''}</td>
-        <td style="text-align:right"><b>${formatCOP(p.total)}</b></td>
-      </tr>`).join('');
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo de pagos</title>
-      <style>
-        *{font-family:Arial,Helvetica,sans-serif;color:#111}
-        h1{font-size:18px;margin:0} .sub{color:#555;font-size:12px;margin:2px 0 14px}
-        table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
-        th,td{border-bottom:1px solid #ddd;padding:7px 6px;text-align:left}
-        th{background:#f3f3f3;text-transform:uppercase;font-size:10px;color:#555}
-        .tot{margin-top:16px} .row{display:flex;justify-content:space-between;max-width:340px;margin:3px 0;font-size:13px}
-      </style></head><body>
-      <h1>Roman Club Barbería — Historial de pagos</h1>
-      <div class="sub">Periodo: ${periodoLabel[periodo]} (${desde} a ${hasta}) · Profesional: ${profTxt} · Servicio: ${servTxt}</div>
-      <table>
-        <thead><tr><th>Fecha</th><th>Cliente</th><th>Servicio</th><th>Profesional</th><th style="text-align:right">Abono online</th><th style="text-align:right">Resto local</th><th>Método resto</th><th style="text-align:right">Total</th></tr></thead>
-        <tbody>${filas || '<tr><td colspan="8">Sin pagos en el periodo.</td></tr>'}</tbody>
-      </table>
-      <div class="tot">
-        <div class="row"><span>Pagado online (Wompi):</span> <span>${formatCOP(data.totalOnline)}</span></div>
-        <div class="row"><span>Cobrado en el local:</span> <span>${formatCOP(data.totalLocal)}</span></div>
-        <div class="row"><span>Pendiente por cobrar:</span> <span>${formatCOP(data.totalPendiente)}</span></div>
-        <div class="row"><b>TOTAL RECIBIDO:</b> <b>${formatCOP(data.total)}</b></div>
-      </div>
-      <p style="margin-top:20px;font-size:11px;color:#777">Generado el ${formatFecha(ymd(new Date()))}</p>
-      <script>window.onload=function(){window.print();}</script>
-      </body></html>`;
-    const w = window.open('', '_blank', 'width=900,height=900');
-    if (w) { w.document.write(html); w.document.close(); }
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-white">Pagos e ingresos</h1>
-          <p className="text-sm text-gray-400">{isAdmin ? 'Historial de pagos por cita (abono online + resto en el local)' : 'Tu historial de pagos'}</p>
-        </div>
-        <Button variant="outline" onClick={imprimir} disabled={!data}><Printer className="h-4 w-4" /> Imprimir recibo</Button>
+      <div>
+        <h1 className="font-display text-2xl font-bold text-white">Pagos e ingresos</h1>
+        <p className="text-sm text-gray-400">{isAdmin ? 'Cuánto pagó cada cliente en línea, cuánto faltó y el total.' : 'Tu historial de pagos.'}</p>
       </div>
 
       {/* Filtros */}
@@ -149,16 +91,20 @@ export default function ReportsPage() {
         </div>
       </Card>
 
+      {/* Resumen rápido */}
+      {data && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ResumenCard label="Pagado online" value={data.totalOnline} color="text-green-300" hint="Por la página (Wompi)" />
+          <ResumenCard label="Cobrado en el local" value={data.totalLocal} color="text-gray-100" hint="Efectivo / otros" />
+          <ResumenCard label="Pendiente por cobrar" value={data.totalPendiente} color="text-yellow-300" hint="Abonos sin completar" />
+          <ResumenCard label="Total recibido" value={data.total} color="text-gold" hint="Online + local" big />
+        </div>
+      )}
+
       {loading || !data ? <LoadingSpinner /> : (
         <Card className="!p-0 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-            <h3 className="font-display text-lg font-semibold text-white">Historial de pagos</h3>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <span className="text-gray-400">Online: <span className="font-semibold text-green-300">{formatCOP(data.totalOnline)}</span></span>
-              <span className="text-gray-400">Local: <span className="font-semibold text-gray-200">{formatCOP(data.totalLocal)}</span></span>
-              {data.totalPendiente > 0 && <span className="text-gray-400">Pendiente: <span className="font-semibold text-yellow-300">{formatCOP(data.totalPendiente)}</span></span>}
-              <span className="text-gray-400">Total: <span className="font-display text-base font-bold text-gold">{formatCOP(data.total)}</span></span>
-            </div>
+          <div className="border-b border-white/10 px-5 py-4">
+            <h3 className="font-display text-lg font-semibold text-white">Detalle por cita</h3>
           </div>
 
           {data.historialPagos.length ? (
@@ -168,27 +114,39 @@ export default function ReportsPage() {
                   <tr>
                     <th className="px-4 py-3">Fecha / Hora</th>
                     <th className="px-4 py-3">Cliente</th>
-                    <th className="px-4 py-3">Servicio</th>
                     <th className="px-4 py-3">Profesional</th>
-                    <th className="px-4 py-3">Detalle del pago</th>
+                    <th className="px-4 py-3 text-right">Pagó online</th>
+                    <th className="px-4 py-3 text-right">Falta / resto</th>
                     <th className="px-4 py-3 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {data.historialPagos.map((p) => (
                     <tr key={p.id} className="hover:bg-white/5">
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-400">{formatFecha(String(p.fecha).slice(0, 10))}<br /><span className="text-xs">{p.hora_inicio ? formatHora(p.hora_inicio) : ''}</span></td>
-                      <td className="px-4 py-3 text-white">{p.nombre_cliente}</td>
-                      <td className="px-4 py-3 text-gray-300">{p.servicio || '—'}</td>
-                      <td className="px-4 py-3 text-gray-300">{p.profesional || '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-400">
+                        {formatFecha(String(p.fecha).slice(0, 10))}
+                        <br /><span className="text-xs">{p.hora_inicio ? formatHora(p.hora_inicio) : ''}</span>
+                      </td>
                       <td className="px-4 py-3">
-                        <span className="flex flex-col gap-0.5">
-                          <span className="flex items-center gap-2">
-                            <Badge>{p.tipo_pago === 'TOTAL' ? 'PAGO TOTAL' : p.tipo_pago === 'ABONO' ? 'ABONO 20%' : 'LOCAL'}</Badge>
-                            {p.pendiente > 0 && <span className="text-xs font-semibold text-yellow-300">Falta {formatCOP(p.pendiente)}</span>}
-                          </span>
-                          <span className="text-xs text-gray-400">{detallePago(p)}</span>
-                        </span>
+                        <span className="font-medium text-white">{p.nombre_cliente}</span>
+                        <br /><span className="text-xs text-gray-500">{p.servicio || '—'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-300">{p.profesional || '—'}</td>
+                      {/* Pagó online */}
+                      <td className="px-4 py-3 text-right">
+                        {p.online > 0
+                          ? <span className="font-semibold text-green-300">{formatCOP(p.online)}</span>
+                          : <span className="text-gray-600">—</span>}
+                      </td>
+                      {/* Falta / resto */}
+                      <td className="px-4 py-3 text-right">
+                        {p.pendiente > 0 ? (
+                          <span className="font-semibold text-yellow-300">Falta {formatCOP(p.pendiente)}</span>
+                        ) : p.local > 0 ? (
+                          <span className="text-gray-200">{formatCOP(p.local)} <span className="text-xs text-gray-500">{p.metodo_local || ''}</span></span>
+                        ) : (
+                          <span className="text-xs font-semibold text-green-400">✓ Todo pagado</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-gold">{formatCOP(p.total)}</td>
                     </tr>
@@ -200,5 +158,15 @@ export default function ReportsPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function ResumenCard({ label, value, color, hint, big }: { label: string; value: number; color: string; hint: string; big?: boolean }) {
+  return (
+    <Card className={big ? 'bg-gradient-to-br from-gold/10 to-transparent' : ''}>
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className={`mt-1 font-display text-2xl font-bold ${color}`}>{formatCOP(value)}</p>
+      <p className="mt-0.5 text-[11px] text-gray-500">{hint}</p>
+    </Card>
   );
 }

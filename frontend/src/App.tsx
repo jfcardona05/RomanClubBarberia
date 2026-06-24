@@ -18,6 +18,7 @@ import EmployeesPage from './pages/admin/EmployeesPage';
 import GalleryPage from './pages/admin/GalleryPage';
 import InventoryPage from './pages/admin/InventoryPage';
 import ReportsPage from './pages/admin/ReportsPage';
+import ReceiptPage from './pages/admin/ReceiptPage';
 import WhatsappPage from './pages/admin/WhatsappPage';
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="citas" element={<AppointmentsPage />} />
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="reportes" element={<ReportsPage />} />
+        <Route path="recibo" element={<ReceiptPage />} />
         {/* Solo ADMIN */}
         <Route path="servicios" element={<ProtectedRoute requireAdmin><ServicesPage /></ProtectedRoute>} />
         <Route path="empleados" element={<ProtectedRoute requireAdmin><EmployeesPage /></ProtectedRoute>} />
