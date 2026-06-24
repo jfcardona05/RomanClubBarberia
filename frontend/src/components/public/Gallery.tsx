@@ -12,14 +12,15 @@ export default function Gallery({ imagenes }: { imagenes: ImagenGaleria[] }) {
         <p className="mx-auto mt-3 max-w-2xl text-gray-400">Resultados reales de Roman Club Barbería.</p>
       </div>
 
-      {/* Solo fotos, centradas, foto completa (sin recorte) y zoom suave al pasar el cursor */}
+      {/* Cards uniformes (mismo tamaño), centradas, con zoom suave al pasar el cursor */}
       <div className="mt-12 flex flex-wrap justify-center gap-4">
         {imagenes.map((img) => (
-          <div key={img.id_imagen} className="flex h-72 w-72 items-center justify-center overflow-hidden rounded-2xl border border-white/5 bg-ink-900">
+          <div key={img.id_imagen} className="h-64 w-64 overflow-hidden rounded-2xl border border-white/5 bg-ink-900 sm:h-72 sm:w-72">
             <img
               src={resolveImg(img.imagen_url)}
               alt=""
-              className="max-h-full max-w-full object-contain transition-transform duration-500 hover:scale-105"
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
             />
           </div>
         ))}
