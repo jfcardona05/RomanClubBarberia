@@ -30,6 +30,12 @@ function rangoPeriodo(p: Periodo): { desde: string; hasta: string } {
 }
 const periodoLabel: Record<Periodo, string> = { DIA: 'Hoy', SEMANA: 'Esta semana', MES: 'Este mes' };
 
+// Comisión que cobra Wompi por una transacción online: (Valor x 2.63% + 700) + 19% IVA
+function comisionWompi(valor: number): number {
+  if (!valor || valor <= 0) return 0;
+  return Math.round((valor * 0.0263 + 700) * 1.19);
+}
+
 // Texto corto de "falta / resto" para cada fila
 function restoTexto(p: Pago): string {
   if (p.pendiente > 0) return `Falta ${formatCOP(p.pendiente)}`;
@@ -69,6 +75,8 @@ export default function ReceiptPage() {
 
   const imprimir = () => {
     if (!data) return;
+    const comisionTotal = data.historialPagos.reduce((a, p) => a + comisionWompi(p.online), 0);
+    const netoOnline = data.totalOnline - comisionTotal;
     const logo = `${location.origin}/img/logo.png`;
     const filas = data.historialPagos.map((p) => `
       <tr>
@@ -120,9 +128,12 @@ export default function ReceiptPage() {
       </table>
       <div class="tot">
         <div class="row"><span>Pagado online (Wompi)</span><span>${formatCOP(data.totalOnline)}</span></div>
+        <div class="row"><span>Comisión online (Wompi)</span><span>-${formatCOP(comisionTotal)}</span></div>
+        <div class="row"><span>Neto online (después de comisión)</span><span>${formatCOP(netoOnline)}</span></div>
         <div class="row"><span>Cobrado en el local</span><span>${formatCOP(data.totalLocal)}</span></div>
         ${data.totalPendiente > 0 ? `<div class="row"><span>Pendiente por cobrar</span><span>${formatCOP(data.totalPendiente)}</span></div>` : ''}
         <div class="row grand"><b>TOTAL RECIBIDO</b><b>${formatCOP(data.total)}</b></div>
+        <div class="row" style="border:none;color:#888;font-size:11px"><span>Neto real (sin comisión Wompi)</span><span>${formatCOP(data.total - comisionTotal)}</span></div>
       </div>
       <p class="foot">Recibo generado el ${formatFecha(ymd(new Date()))} · ${negocio}</p>
       <script>window.onload=function(){setTimeout(function(){window.print()},300);}</script>
@@ -214,12 +225,20 @@ export default function ReceiptPage() {
           ) : <p className="px-5 py-10 text-center text-sm text-gray-500">Sin pagos en el periodo seleccionado.</p>}
 
           {/* Totales */}
-          <div className="flex flex-col items-end gap-1 border-t border-white/10 px-5 py-4 text-sm">
-            <div className="flex w-full max-w-xs justify-between text-gray-400"><span>Pagado online</span><span className="text-green-300">{formatCOP(data.totalOnline)}</span></div>
-            <div className="flex w-full max-w-xs justify-between text-gray-400"><span>Cobrado en el local</span><span className="text-gray-200">{formatCOP(data.totalLocal)}</span></div>
-            {data.totalPendiente > 0 && <div className="flex w-full max-w-xs justify-between text-gray-400"><span>Pendiente por cobrar</span><span className="text-yellow-300">{formatCOP(data.totalPendiente)}</span></div>}
-            <div className="mt-1 flex w-full max-w-xs justify-between border-t border-gold/40 pt-2 font-display text-base font-bold"><span className="text-white">Total recibido</span><span className="text-gold">{formatCOP(data.total)}</span></div>
-          </div>
+          {(() => {
+            const comisionTotal = data.historialPagos.reduce((a, p) => a + comisionWompi(p.online), 0);
+            return (
+              <div className="flex flex-col items-end gap-1 border-t border-white/10 px-5 py-4 text-sm">
+                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Pagado online</span><span className="text-green-300">{formatCOP(data.totalOnline)}</span></div>
+                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Comisión online (Wompi)</span><span className="text-red-300">-{formatCOP(comisionTotal)}</span></div>
+                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Neto online (después de comisión)</span><span className="text-gray-200">{formatCOP(data.totalOnline - comisionTotal)}</span></div>
+                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Cobrado en el local</span><span className="text-gray-200">{formatCOP(data.totalLocal)}</span></div>
+                {data.totalPendiente > 0 && <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Pendiente por cobrar</span><span className="text-yellow-300">{formatCOP(data.totalPendiente)}</span></div>}
+                <div className="mt-1 flex w-full max-w-sm justify-between border-t border-gold/40 pt-2 font-display text-base font-bold"><span className="text-white">Total recibido</span><span className="text-gold">{formatCOP(data.total)}</span></div>
+                <div className="flex w-full max-w-sm justify-between text-xs text-gray-500"><span>Neto real (sin comisión Wompi)</span><span>{formatCOP(data.total - comisionTotal)}</span></div>
+              </div>
+            );
+          })()}
         </Card>
       )}
     </div>
