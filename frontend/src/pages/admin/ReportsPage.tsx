@@ -114,6 +114,7 @@ export default function ReportsPage() {
                   <tr>
                     <th className="px-4 py-3">Fecha / Hora</th>
                     <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Servicio</th>
                     <th className="px-4 py-3">Profesional</th>
                     <th className="px-4 py-3 text-right">Pagó online</th>
                     <th className="px-4 py-3 text-right">Falta / resto</th>
@@ -127,10 +128,8 @@ export default function ReportsPage() {
                         {formatFecha(String(p.fecha).slice(0, 10))}
                         <br /><span className="text-xs">{p.hora_inicio ? formatHora(p.hora_inicio) : ''}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="font-medium text-white">{p.nombre_cliente}</span>
-                        <br /><span className="text-xs text-gray-500">{p.servicio || '—'}</span>
-                      </td>
+                      <td className="px-4 py-3 font-medium text-white">{p.nombre_cliente}</td>
+                      <td className="px-4 py-3 text-gray-300">{p.servicio || '—'}</td>
                       <td className="px-4 py-3 text-gray-300">{p.profesional || '—'}</td>
                       {/* Pagó online */}
                       <td className="px-4 py-3 text-right">

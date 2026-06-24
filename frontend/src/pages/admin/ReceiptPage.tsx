@@ -73,7 +73,8 @@ export default function ReceiptPage() {
     const filas = data.historialPagos.map((p) => `
       <tr>
         <td>${formatFecha(String(p.fecha).slice(0, 10))}${p.hora_inicio ? '<br><span class="mut">' + formatHora(p.hora_inicio) + '</span>' : ''}</td>
-        <td>${p.nombre_cliente || ''}<br><span class="mut">${p.servicio || ''}</span></td>
+        <td>${p.nombre_cliente || ''}</td>
+        <td>${p.servicio || ''}</td>
         <td>${p.profesional || ''}</td>
         <td class="r">${p.online > 0 ? formatCOP(p.online) : '—'}</td>
         <td class="r">${restoTexto(p)}</td>
@@ -112,10 +113,10 @@ export default function ReceiptPage() {
       </div>
       <table>
         <thead><tr>
-          <th>Fecha / Hora</th><th>Cliente</th><th>Profesional</th>
+          <th>Fecha / Hora</th><th>Cliente</th><th>Servicio</th><th>Profesional</th>
           <th class="r">Pagó online</th><th class="r">Falta / resto</th><th class="r">Total</th>
         </tr></thead>
-        <tbody>${filas || '<tr><td colspan="6" style="text-align:center;color:#999;padding:18px">Sin pagos en el periodo.</td></tr>'}</tbody>
+        <tbody>${filas || '<tr><td colspan="7" style="text-align:center;color:#999;padding:18px">Sin pagos en el periodo.</td></tr>'}</tbody>
       </table>
       <div class="tot">
         <div class="row"><span>Pagado online (Wompi)</span><span>${formatCOP(data.totalOnline)}</span></div>
@@ -188,6 +189,7 @@ export default function ReceiptPage() {
                   <tr>
                     <th className="px-4 py-3">Fecha / Hora</th>
                     <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Servicio</th>
                     <th className="px-4 py-3">Profesional</th>
                     <th className="px-4 py-3 text-right">Pagó online</th>
                     <th className="px-4 py-3 text-right">Falta / resto</th>
@@ -198,7 +200,8 @@ export default function ReceiptPage() {
                   {data.historialPagos.map((p) => (
                     <tr key={p.id}>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-400">{formatFecha(String(p.fecha).slice(0, 10))}<br /><span className="text-xs">{p.hora_inicio ? formatHora(p.hora_inicio) : ''}</span></td>
-                      <td className="px-4 py-3"><span className="font-medium text-white">{p.nombre_cliente}</span><br /><span className="text-xs text-gray-500">{p.servicio || '—'}</span></td>
+                      <td className="px-4 py-3 font-medium text-white">{p.nombre_cliente}</td>
+                      <td className="px-4 py-3 text-gray-300">{p.servicio || '—'}</td>
                       <td className="px-4 py-3 text-gray-300">{p.profesional || '—'}</td>
                       <td className="px-4 py-3 text-right">{p.online > 0 ? <span className="font-semibold text-green-300">{formatCOP(p.online)}</span> : <span className="text-gray-600">—</span>}</td>
                       <td className="px-4 py-3 text-right">{p.pendiente > 0 ? <span className="font-semibold text-yellow-300">Falta {formatCOP(p.pendiente)}</span> : p.local > 0 ? <span className="text-gray-200">{formatCOP(p.local)} <span className="text-xs text-gray-500">{p.metodo_local || ''}</span></span> : <span className="text-xs font-semibold text-green-400">✓ Pagado</span>}</td>
