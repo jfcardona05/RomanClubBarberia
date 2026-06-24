@@ -39,12 +39,12 @@ export default function ClientsPage() {
           <h1 className="font-display text-2xl font-bold text-white">Clientes</h1>
           <p className="text-sm text-gray-400">Base de datos de clientes (identificados por documento)</p>
         </div>
-        <div className="flex gap-3">
-          <form onSubmit={(e) => { e.preventDefault(); cargar(q); }} className="flex gap-2">
-            <Input placeholder="Buscar por documento, nombre o teléfono" value={q} onChange={(e) => setQ(e.target.value)} className="w-64" />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <form onSubmit={(e) => { e.preventDefault(); cargar(q); }} className="flex flex-1 gap-2">
+            <Input placeholder="Buscar por documento, nombre o teléfono" value={q} onChange={(e) => setQ(e.target.value)} className="w-full sm:w-64" />
             <Button variant="outline" type="submit">Buscar</Button>
           </form>
-          {isAdmin && <Button onClick={() => { setEditing(null); setOpen(true); }}>+ Nuevo cliente</Button>}
+          {isAdmin && <Button className="whitespace-nowrap" onClick={() => { setEditing(null); setOpen(true); }}>+ Nuevo cliente</Button>}
         </div>
       </div>
 

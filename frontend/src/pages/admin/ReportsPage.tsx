@@ -137,12 +137,12 @@ export default function ReportsPage() {
             </div>
           </div>
           {isAdmin && (
-            <Select label="Profesional" value={idEmpleado} onChange={(e) => setIdEmpleado(e.target.value)} className="w-44">
+            <Select label="Profesional" value={idEmpleado} onChange={(e) => setIdEmpleado(e.target.value)} className="w-full sm:w-44">
               <option value="">Todos</option>
               {empleados.map((u) => <option key={u.id_usuario} value={u.id_usuario}>{u.nombre}</option>)}
             </Select>
           )}
-          <Select label="Servicio" value={idServicio} onChange={(e) => setIdServicio(e.target.value)} className="w-44">
+          <Select label="Servicio" value={idServicio} onChange={(e) => setIdServicio(e.target.value)} className="w-full sm:w-44">
             <option value="">Todos</option>
             {servicios.map((s) => <option key={s.id_servicio} value={s.id_servicio}>{s.nombre}</option>)}
           </Select>

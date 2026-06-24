@@ -16,19 +16,19 @@ export default function Hero({ config }: { config: ConfigSitio }) {
       <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 pt-28 pb-16 lg:grid-cols-2">
         <div className="animate-fade-up">
           <span className="section-eyebrow">{config.slogan || 'Barbería premium · Villavicencio'}</span>
-          <h1 className="font-display text-5xl font-extrabold leading-[1.05] text-white sm:text-6xl lg:text-7xl">
+          <h1 className="font-display text-4xl font-extrabold leading-[1.05] text-white sm:text-5xl md:text-6xl lg:text-7xl">
             {config.hero_titulo || 'Luce como un'} <span className="text-gold-gradient">Rey</span>
           </h1>
-          <p className="mt-6 max-w-lg text-lg text-gray-300">
+          <p className="mt-6 max-w-lg text-base text-gray-300 sm:text-lg">
             {config.hero_subtitulo ||
               'Barbería premium en Villavicencio. Reserva tu cita y vive la experiencia Roman Club.'}
           </p>
-          <div className="mt-9 flex flex-wrap gap-4">
+          <div className="mt-9 flex flex-wrap gap-3 sm:gap-4">
             <Link to="/reservar" className="btn-gold text-base">{config.cta_principal || 'Reservar cita'}</Link>
             <a href="#contacto" className="btn-outline text-base">Contáctanos</a>
           </div>
 
-          <div className="mt-12 flex gap-8">
+          <div className="mt-12 flex gap-6 sm:gap-8">
             <Stat value="+5" label="Años de experiencia" />
             <Stat value="1000+" label="Clientes felices" />
             <Stat value="5★" label="Calidad premium" />

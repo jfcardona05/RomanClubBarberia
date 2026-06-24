@@ -80,17 +80,17 @@ export default function AppointmentsPage() {
           <h1 className="font-display text-2xl font-bold text-white">Citas</h1>
           <p className="text-sm text-gray-400">{isAdmin ? 'Toca una cita para ver sus opciones' : 'Tus citas asignadas'}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} className="!py-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
+          <Select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} className="!py-2 flex-1 sm:flex-none">
             <option value="TODAS">Todas las fechas</option>
             <option value="DIA">Hoy</option>
             <option value="SEMANA">Esta semana</option>
             <option value="MES">Este mes</option>
           </Select>
-          <Select value={filtro} onChange={(e) => setFiltro(e.target.value as EstadoCita | '')} className="!py-2">
+          <Select value={filtro} onChange={(e) => setFiltro(e.target.value as EstadoCita | '')} className="!py-2 flex-1 sm:flex-none">
             {ESTADOS.map((s) => <option key={s} value={s}>{s || 'Todos los estados'}</option>)}
           </Select>
-          <Button onClick={() => { setEditing(null); setEditOpen(true); }}>+ Nueva cita</Button>
+          <Button className="w-full whitespace-nowrap sm:w-auto" onClick={() => { setEditing(null); setEditOpen(true); }}>+ Nueva cita</Button>
         </div>
       </div>
 
