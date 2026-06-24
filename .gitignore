@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Variables de entorno y secretos (NUNCA subir)
+.env
+**/.env
+*.env
+!**/.env.example
+
+# Builds
+dist/
+**/dist/
+build/
+
+# Sesión de WhatsApp (whatsapp-web.js)
+.wwebjs_auth/
+.wwebjs_cache/
+**/.wwebjs_auth/
+**/.wwebjs_cache/
+
+# Imágenes subidas en el backend (contenido local)
+backend/src/uploads/**/*
+!backend/src/uploads/.gitkeep
+
+# Logs y temporales
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

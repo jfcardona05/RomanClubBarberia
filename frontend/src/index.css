@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-ink text-gray-100 font-sans antialiased;
+  }
+  ::selection {
+    @apply bg-gold/30 text-white;
+  }
+}
+
+@layer components {
+  /* Texto con relleno dorado metálico */
+  .text-gold-gradient {
+    @apply bg-gold-gradient bg-clip-text text-transparent;
+    background-size: 200% auto;
+  }
+
+  /* Botón dorado principal */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold-gradient px-6 py-3
+           font-semibold text-ink-900 shadow-gold transition-all duration-300
+           hover:shadow-gold hover:brightness-110 active:scale-95;
+    background-size: 200% auto;
+  }
+
+  /* Botón contorno */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-gold/60 px-6 py-3
+           font-semibold text-gold transition-all duration-300 hover:bg-gold/10 active:scale-95;
+  }
+
+  .card-dark {
+    @apply rounded-2xl border border-white/5 bg-ink-100 shadow-card;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-bold text-white sm:text-4xl;
+  }
+
+  .section-eyebrow {
+    @apply mb-3 inline-block text-sm font-semibold uppercase tracking-[0.25em] text-gold;
+  }
+}
+
+/* Scrollbar discreto */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-thumb { background: #2a2a33; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #c9a24b; }
