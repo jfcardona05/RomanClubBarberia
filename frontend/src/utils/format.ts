@@ -21,9 +21,13 @@ export function formatHora(hora?: string | null): string {
   return `${h12}:${String(m || 0).padStart(2, '0')} ${periodo}`;
 }
 
+// Origen del backend (vacío en dev -> proxy de Vite; en prod -> Railway)
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 // Resuelve la URL de una imagen: /uploads -> backend; /img o http -> tal cual
 export function resolveImg(url?: string | null): string {
   if (!url) return '/img/logo.png';
   if (url.startsWith('http') || url.startsWith('/img')) return url;
-  return url; // /uploads pasa por el proxy de Vite en dev
+  if (url.startsWith('/uploads')) return `${API_ORIGIN}${url}`; // en prod va al backend
+  return url;
 }

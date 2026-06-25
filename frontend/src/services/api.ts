@@ -1,8 +1,13 @@
 import axios from 'axios';
 
-// Cliente Axios central. En dev usa el proxy de Vite (/api -> :4000).
+// Origen del backend.
+//  - DEV: vacío -> usa el proxy de Vite (/api -> :4000).
+//  - PROD (Vercel): VITE_API_URL = https://tu-backend.up.railway.app
+export const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+// Cliente Axios central.
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${API_ORIGIN}/api`,
 });
 
 // Interceptor: adjunta el token JWT en cada petición
