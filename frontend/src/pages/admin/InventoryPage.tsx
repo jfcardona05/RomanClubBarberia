@@ -1,15 +1,38 @@
 import { useEffect, useState } from 'react';
-import { inventarioApi } from '../../services';
+import { inventarioApi, configApi } from '../../services';
 import { getApiError } from '../../services/api';
-import type { Movimiento, Producto } from '../../types';
+import type { Movimiento, Producto, ConfigSitio } from '../../types';
 import { useAuth } from '../../services/AuthContext';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, EmptyState, Input, LoadingSpinner, Select, Textarea } from '../../components/ui';
 import { Modal, ConfirmDialog } from '../../components/Modal';
-import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, Pencil, Trash2, Printer } from 'lucide-react';
 import { formatCOP, formatFecha } from '../../utils/format';
 
 const CATS = ['BARBERIA', 'UÑAS', 'LIMPIEZA', 'HERRAMIENTA', 'VENTA', 'OTRO'];
+
+// Etiquetas legibles de cada tipo de movimiento
+const TIPO_LABEL: Record<string, string> = {
+  ENTRADA: 'Entrada (recibido)',
+  SALIDA: 'Salida (venta)',
+  USO_EN_SERVICIO: 'Gasto (barbero)',
+  AJUSTE: 'Ajuste',
+};
+
+type PeriodoMov = 'DIA' | 'SEMANA' | 'MES' | 'TODO';
+const PERIODO_LABEL: Record<PeriodoMov, string> = { DIA: 'Hoy', SEMANA: 'Semana', MES: 'Mes', TODO: 'Todo' };
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function rangoPeriodo(p: PeriodoMov): { desde: string; hasta: string } | null {
+  if (p === 'TODO') return null;
+  const hoy = new Date();
+  if (p === 'DIA') return { desde: ymd(hoy), hasta: ymd(hoy) };
+  if (p === 'SEMANA') {
+    const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+    const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+    return { desde: ymd(lunes), hasta: ymd(domingo) };
+  }
+  return { desde: ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: ymd(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)) };
+}
 
 export default function InventoryPage() {
   const { user } = useAuth();
@@ -23,6 +46,8 @@ export default function InventoryPage() {
   const [movOpen, setMovOpen] = useState(false);
   const [editing, setEditing] = useState<Producto | null>(null);
   const [del, setDel] = useState<Producto | null>(null);
+  const [config, setConfig] = useState<ConfigSitio>({});
+  const [periodo, setPeriodo] = useState<PeriodoMov>('MES');
 
   const cargar = () => {
     setLoading(true);
@@ -32,6 +57,76 @@ export default function InventoryPage() {
       .finally(() => setLoading(false));
   };
   useEffect(cargar, []);
+  useEffect(() => { configApi.publica().then(setConfig).catch(() => {}); }, []);
+
+  // Movimientos del periodo seleccionado
+  const rango = rangoPeriodo(periodo);
+  const movsPeriodo = movs.filter((m) => {
+    if (!rango) return true;
+    const d = String(m.fecha_movimiento).slice(0, 10);
+    return d >= rango.desde && d <= rango.hasta;
+  });
+
+  // Valoriza al costo unitario del producto
+  const costoUnit = (id: number) => Number(items.find((p) => p.id_producto === id)?.costo_unitario || 0);
+  const valorMov = (m: Movimiento) => Number(m.cantidad) * costoUnit(m.id_producto);
+  const esEntrada = (m: Movimiento) => m.tipo_movimiento === 'ENTRADA';
+  const esSalida = (m: Movimiento) => m.tipo_movimiento === 'SALIDA' || m.tipo_movimiento === 'USO_EN_SERVICIO';
+  const totalRecibido = movsPeriodo.filter(esEntrada).reduce((a, m) => a + valorMov(m), 0);
+  const totalSalidas = movsPeriodo.filter(esSalida).reduce((a, m) => a + valorMov(m), 0);
+
+  const negocio = config.nombre_negocio || 'Roman Club Barbería';
+
+  const imprimir = () => {
+    const logo = `${location.origin}/img/logo.png`;
+    const filas = movsPeriodo.map((m) => `
+      <tr>
+        <td>${formatFecha(String(m.fecha_movimiento).slice(0, 10))}</td>
+        <td>${m.producto_nombre || ''}</td>
+        <td>${TIPO_LABEL[m.tipo_movimiento] || m.tipo_movimiento}</td>
+        <td class="r">${m.cantidad} ${m.unidad || ''}</td>
+        <td>${m.usuario_nombre || '—'}</td>
+        <td>${m.motivo || ''}</td>
+        <td class="r">${m.tipo_movimiento === 'AJUSTE' ? '—' : formatCOP(valorMov(m))}</td>
+      </tr>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo de inventario · ${negocio}</title>
+      <style>
+        *{font-family:Arial,Helvetica,sans-serif;color:#111;box-sizing:border-box}
+        body{margin:0;padding:28px}
+        .head{text-align:center;border-bottom:3px solid #caa24a;padding-bottom:14px;margin-bottom:6px}
+        .head img{height:74px;width:74px;border-radius:50%;object-fit:cover;border:2px solid #caa24a}
+        .head h1{font-size:20px;margin:8px 0 2px}.head .mut{color:#666;font-size:11px;margin:1px 0}
+        .meta{font-size:12px;color:#444;margin:14px 0 4px}.meta b{color:#111}
+        table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+        th,td{border-bottom:1px solid #e3e3e3;padding:7px 6px;text-align:left;vertical-align:top}
+        th{background:#faf4e4;text-transform:uppercase;font-size:10px;color:#8a6d1f}
+        td.r,th.r{text-align:right}
+        .tot{margin-top:18px;margin-left:auto;width:320px}
+        .tot .row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px dashed #ddd}
+        .tot .grand{border-top:2px solid #caa24a;border-bottom:none;margin-top:4px;padding-top:8px;font-size:15px}
+        .foot{margin-top:24px;text-align:center;font-size:10px;color:#999}
+      </style></head><body>
+      <div class="head">
+        <img src="${logo}" alt="logo" onerror="this.style.display='none'"/>
+        <h1>${negocio}</h1>
+        <p class="mut">Recibo de inventario</p>
+      </div>
+      <div class="meta">Periodo: <b>${PERIODO_LABEL[periodo]}</b>${rango ? ` (${rango.desde} a ${rango.hasta})` : ''} · Movimientos: <b>${movsPeriodo.length}</b></div>
+      <table>
+        <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="r">Cantidad</th><th>Usuario</th><th>Motivo</th><th class="r">Valor (costo)</th></tr></thead>
+        <tbody>${filas || '<tr><td colspan="7" style="text-align:center;color:#999;padding:18px">Sin movimientos en el periodo.</td></tr>'}</tbody>
+      </table>
+      <div class="tot">
+        <div class="row"><span>Recibido (entradas)</span><span>${formatCOP(totalRecibido)}</span></div>
+        <div class="row"><span>Salidas (ventas + gastos)</span><span>${formatCOP(totalSalidas)}</span></div>
+        <div class="row grand"><b>Diferencia (recibido − salidas)</b><b>${formatCOP(totalRecibido - totalSalidas)}</b></div>
+      </div>
+      <p class="foot">Recibo generado el ${formatFecha(ymd(new Date()))} · ${negocio}</p>
+      <script>window.onload=function(){setTimeout(function(){window.print()},300);}</script>
+      </body></html>`;
+    const w = window.open('', '_blank', 'width=950,height=950');
+    if (w) { w.document.write(html); w.document.close(); } else { toast.error('Permite las ventanas emergentes para imprimir.'); }
+  };
 
   return (
     <div className="space-y-6">
@@ -40,7 +135,8 @@ export default function InventoryPage() {
           <h1 className="font-display text-2xl font-bold text-white">Inventario</h1>
           <p className="text-sm text-gray-400">Productos, stock y movimientos</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" onClick={imprimir} disabled={loading}><Printer className="h-4 w-4" /> Imprimir recibo</Button>
           <Button variant="outline" onClick={() => setMovOpen(true)}>+ Movimiento</Button>
           {isAdmin && <Button onClick={() => { setEditing(null); setProdOpen(true); }}>+ Producto</Button>}
         </div>
@@ -88,29 +184,48 @@ export default function InventoryPage() {
           </Card>
         )
       ) : (
-        !movs.length ? <EmptyState title="Sin movimientos" icon="🔄" /> : (
-          <Card className="!p-0 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-white/10 bg-ink-50/40 text-xs uppercase tracking-wide text-gray-500">
-                  <tr><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Producto</th><th className="px-4 py-3">Tipo</th><th className="px-4 py-3">Cantidad</th><th className="px-4 py-3">Usuario</th><th className="px-4 py-3">Motivo</th></tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {movs.map((m) => (
-                    <tr key={m.id_movimiento} className="hover:bg-white/5">
-                      <td className="px-4 py-3 text-gray-400">{formatFecha(m.fecha_movimiento?.slice(0, 10))}</td>
-                      <td className="px-4 py-3 text-white">{m.producto_nombre}</td>
-                      <td className="px-4 py-3"><Badge>{m.tipo_movimiento}</Badge></td>
-                      <td className="px-4 py-3 text-gray-300">{m.cantidad} {m.unidad}</td>
-                      <td className="px-4 py-3 text-gray-400">{m.usuario_nombre || '—'}</td>
-                      <td className="px-4 py-3 text-gray-400">{m.motivo || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <div className="space-y-4">
+          {/* Filtro de periodo + totales */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-2">
+              {(['DIA', 'SEMANA', 'MES', 'TODO'] as PeriodoMov[]).map((k) => (
+                <button key={k} onClick={() => setPeriodo(k)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${periodo === k ? 'bg-gold-gradient text-ink-900' : 'border border-white/10 text-gray-400 hover:border-gold/40'}`}>
+                  {PERIODO_LABEL[k]}
+                </button>
+              ))}
             </div>
-          </Card>
-        )
+            <div className="flex flex-wrap gap-4 text-sm">
+              <span className="text-gray-400">Recibido: <span className="font-semibold text-green-300">{formatCOP(totalRecibido)}</span></span>
+              <span className="text-gray-400">Salidas: <span className="font-semibold text-red-300">{formatCOP(totalSalidas)}</span></span>
+            </div>
+          </div>
+
+          {!movsPeriodo.length ? <EmptyState title="Sin movimientos en el periodo" icon="🔄" /> : (
+            <Card className="!p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-white/10 bg-ink-50/40 text-xs uppercase tracking-wide text-gray-500">
+                    <tr><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Producto</th><th className="px-4 py-3">Tipo</th><th className="px-4 py-3">Cantidad</th><th className="px-4 py-3">Usuario</th><th className="px-4 py-3">Motivo</th><th className="px-4 py-3 text-right">Valor</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {movsPeriodo.map((m) => (
+                      <tr key={m.id_movimiento} className="hover:bg-white/5">
+                        <td className="px-4 py-3 text-gray-400">{formatFecha(m.fecha_movimiento?.slice(0, 10))}</td>
+                        <td className="px-4 py-3 text-white">{m.producto_nombre}</td>
+                        <td className="px-4 py-3"><Badge>{TIPO_LABEL[m.tipo_movimiento] || m.tipo_movimiento}</Badge></td>
+                        <td className="px-4 py-3 text-gray-300">{m.cantidad} {m.unidad}</td>
+                        <td className="px-4 py-3 text-gray-400">{m.usuario_nombre || '—'}</td>
+                        <td className="px-4 py-3 text-gray-400">{m.motivo || '—'}</td>
+                        <td className="px-4 py-3 text-right text-gray-300">{m.tipo_movimiento === 'AJUSTE' ? '—' : formatCOP(valorMov(m))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </div>
       )}
 
       {prodOpen && <ProductModal producto={editing} onClose={() => setProdOpen(false)} onSaved={() => { setProdOpen(false); cargar(); }} />}
