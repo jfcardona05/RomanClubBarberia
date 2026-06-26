@@ -2,7 +2,7 @@ import { useState, type ComponentType } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users, Scissors, UserCog, Image as ImageIcon,
-  Package, BarChart3, LogOut, Home, Menu as MenuIcon, MessageCircle, Receipt,
+  Package, BarChart3, LogOut, Home, Menu as MenuIcon, MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '../services/AuthContext';
 
@@ -17,8 +17,7 @@ const menu: MenuItem[] = [
   { to: '/admin/galeria', label: 'Galería', icon: ImageIcon, adminOnly: true },
   { to: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle, adminOnly: true },
   { to: '/admin/inventario', label: 'Inventario', icon: Package },
-  { to: '/admin/reportes', label: 'Pagos y reportes', icon: BarChart3 },
-  { to: '/admin/recibo', label: 'Recibo', icon: Receipt },
+  { to: '/admin/reportes', label: 'Pagos', icon: BarChart3 },
 ];
 
 export default function AdminLayout() {
