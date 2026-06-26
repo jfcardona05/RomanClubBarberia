@@ -126,13 +126,6 @@ CREATE TABLE citas (
   confirmacion_enviada     TINYINT(1) NOT NULL DEFAULT 0,
   recordatorio_1h_enviado  TINYINT(1) NOT NULL DEFAULT 0,
   recordatorio_20m_enviado TINYINT(1) NOT NULL DEFAULT 0,
-  -- Pago (independiente del estado de atención)
-  monto_total          DECIMAL(10,2) DEFAULT NULL,
-  monto_pagado         DECIMAL(10,2) NOT NULL DEFAULT 0,
-  tipo_pago            ENUM('NINGUNO','ABONO','TOTAL') NOT NULL DEFAULT 'NINGUNO',
-  estado_pago          ENUM('NO_APLICA','PENDIENTE','ABONADO','PAGADO','FALLIDO') NOT NULL DEFAULT 'NO_APLICA',
-  referencia_pago      VARCHAR(80) DEFAULT NULL,
-  transaccion_id       VARCHAR(80) DEFAULT NULL,
   creado_por           ENUM('CLIENTE','ADMIN','EMPLEADO') NOT NULL DEFAULT 'CLIENTE',
   fecha_creacion       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   fecha_actualizacion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -162,23 +155,6 @@ CREATE TABLE cita_servicios (
     REFERENCES citas(id_cita) ON DELETE CASCADE,
   CONSTRAINT fk_cs_servicio FOREIGN KEY (id_servicio)
     REFERENCES servicios(id_servicio) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
---  RESERVAS_PENDIENTES  (reserva en espera de pago; la cita se
---  crea SOLO cuando el pago es aprobado)
--- ============================================================
-CREATE TABLE reservas_pendientes (
-  id             INT AUTO_INCREMENT PRIMARY KEY,
-  referencia     VARCHAR(80) NOT NULL UNIQUE,
-  datos          LONGTEXT NOT NULL,
-  monto          DECIMAL(10,2) NOT NULL,
-  monto_total    DECIMAL(10,2) NOT NULL,
-  tipo_pago      ENUM('ABONO','TOTAL') NOT NULL,
-  estado         ENUM('PENDIENTE','PAGADA','FALLIDA') NOT NULL DEFAULT 'PENDIENTE',
-  transaccion_id VARCHAR(80) DEFAULT NULL,
-  id_cita        INT DEFAULT NULL,
-  fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

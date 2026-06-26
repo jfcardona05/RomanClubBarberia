@@ -381,8 +381,8 @@ export const completar = asyncHandler(async (req, res) => {
     if (!perfil[0]?.puede_completar_citas) throw new ApiError(403, 'No tienes permiso para completar citas.');
   }
 
-  // El precio del servicio es el total; si ya pagó online (abono/total) usamos monto_total
-  const precio = precio_final ?? c.monto_total ?? c.precio_final ?? c.precio_estimado ?? 0;
+  // Precio cobrado: el que ingresa quien completa, o el estimado de la cita
+  const precio = precio_final ?? c.precio_final ?? c.precio_estimado ?? 0;
   const empleadoFinal = c.id_empleado ?? (req.user.rol === 'EMPLEADO' ? req.user.id : null);
 
   const conn = await pool.getConnection();

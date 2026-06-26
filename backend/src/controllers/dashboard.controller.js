@@ -120,7 +120,7 @@ export const reportes = asyncHandler(async (req, res) => {
 
   const [rows] = await pool.query(`
     SELECT c.id_cita AS id, c.nombre_cliente, c.fecha, c.hora_inicio,
-           c.monto_total AS monto_total_cita,
+           c.precio_final, c.precio_estimado,
            u.nombre AS profesional, ${SERVICIOS_SUB} AS servicio,
            sr.total_cobrado, sr.metodo
     FROM citas c
@@ -139,7 +139,7 @@ export const reportes = asyncHandler(async (req, res) => {
     id: r.id, fecha: r.fecha, hora_inicio: r.hora_inicio, nombre_cliente: r.nombre_cliente,
     servicio: r.servicio, profesional: r.profesional,
     metodo: r.metodo || null,
-    total: Number(r.total_cobrado ?? r.monto_total_cita) || 0,
+    total: Number(r.total_cobrado ?? r.precio_final ?? r.precio_estimado) || 0,
   }));
 
   const total = historialPagos.reduce((a, r) => a + r.total, 0);
