@@ -70,10 +70,10 @@ export default function InventoryPage() {
   // Valoriza al costo unitario del producto
   const costoUnit = (id: number) => Number(items.find((p) => p.id_producto === id)?.costo_unitario || 0);
   const valorMov = (m: Movimiento) => Number(m.cantidad) * costoUnit(m.id_producto);
-  const esEntrada = (m: Movimiento) => m.tipo_movimiento === 'ENTRADA';
-  const esSalida = (m: Movimiento) => m.tipo_movimiento === 'SALIDA' || m.tipo_movimiento === 'USO_EN_SERVICIO';
-  const totalRecibido = movsPeriodo.filter(esEntrada).reduce((a, m) => a + valorMov(m), 0);
-  const totalSalidas = movsPeriodo.filter(esSalida).reduce((a, m) => a + valorMov(m), 0);
+  const totalTipo = (tipo: string) => movsPeriodo.filter((m) => m.tipo_movimiento === tipo).reduce((a, m) => a + valorMov(m), 0);
+  const totalEntradas = totalTipo('ENTRADA');   // productos que ingresan
+  const totalGastos = totalTipo('USO_EN_SERVICIO'); // se gastan en la barbería
+  const totalSalidas = totalTipo('SALIDA');      // ventas
 
   const negocio = config.nombre_negocio || 'Roman Club Barbería';
 
@@ -117,9 +117,9 @@ export default function InventoryPage() {
         <tbody>${filas || '<tr><td colspan="7" style="text-align:center;color:#999;padding:18px">Sin movimientos en el periodo.</td></tr>'}</tbody>
       </table>
       <div class="tot">
-        <div class="row"><span>Recibido (entradas)</span><span>${formatCOP(totalRecibido)}</span></div>
-        <div class="row"><span>Salidas (ventas + gastos)</span><span>${formatCOP(totalSalidas)}</span></div>
-        <div class="row grand"><b>Diferencia (recibido − salidas)</b><b>${formatCOP(totalRecibido - totalSalidas)}</b></div>
+        <div class="row"><span>Entradas</span><span>${formatCOP(totalEntradas)}</span></div>
+        <div class="row"><span>Gastos</span><span>${formatCOP(totalGastos)}</span></div>
+        <div class="row"><span>Salidas</span><span>${formatCOP(totalSalidas)}</span></div>
       </div>
       <p class="foot">Recibo generado el ${formatFecha(ymd(new Date()))} · ${negocio}</p>
       <script>window.onload=function(){setTimeout(function(){window.print()},300);}</script>
@@ -196,7 +196,8 @@ export default function InventoryPage() {
               ))}
             </div>
             <div className="flex flex-wrap gap-4 text-sm">
-              <span className="text-gray-400">Recibido: <span className="font-semibold text-green-300">{formatCOP(totalRecibido)}</span></span>
+              <span className="text-gray-400">Entradas: <span className="font-semibold text-green-300">{formatCOP(totalEntradas)}</span></span>
+              <span className="text-gray-400">Gastos: <span className="font-semibold text-yellow-300">{formatCOP(totalGastos)}</span></span>
               <span className="text-gray-400">Salidas: <span className="font-semibold text-red-300">{formatCOP(totalSalidas)}</span></span>
             </div>
           </div>
