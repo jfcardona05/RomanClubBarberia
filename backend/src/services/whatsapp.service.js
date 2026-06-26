@@ -30,10 +30,16 @@ export function iniciarWhatsapp() {
   iniciando = true;
   try {
     client = new Client({
-      authStrategy: new LocalAuth({ clientId: 'roman-club' }),
+      // dataPath: en producción apunta a un volumen para no perder la sesión al redeployar
+      authStrategy: new LocalAuth({ clientId: 'roman-club', dataPath: process.env.WWEBJS_PATH || undefined }),
       puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        // executablePath: en Railway/Docker usa el Chromium del sistema (PUPPETEER_EXECUTABLE_PATH)
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+        args: [
+          '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+          '--disable-gpu', '--no-zygote', '--single-process',
+        ],
       },
     });
 
