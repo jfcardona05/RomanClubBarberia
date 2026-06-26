@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { citasApi, serviciosApi, configApi, clientesApi, pagosApi } from '../../services';
+import { citasApi, serviciosApi, configApi, clientesApi } from '../../services';
 import { getApiError } from '../../services/api';
 import type { Servicio, ConfigSitio, CategoriaServicio } from '../../types';
 import { CheckCircle2, MessageCircle, Scissors, Sparkles, Clock } from 'lucide-react';
@@ -66,10 +66,6 @@ export default function BookingPage() {
   const [enviando, setEnviando] = useState(false);
   const [listo, setListo] = useState(false);
 
-  // Pagos
-  const [pagos, setPagos] = useState({ habilitados: false, abono_porcentaje: 20 });
-  const [tipoPago, setTipoPago] = useState<'ABONO' | 'TOTAL'>('ABONO');
-
   const ahora = useMemo(() => new Date(), []);
   const hoyStr = ymd(ahora);
   const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
@@ -77,7 +73,6 @@ export default function BookingPage() {
   useEffect(() => {
     serviciosApi.publicos().then(setServicios).catch(() => {});
     configApi.publica().then(setConfig).catch(() => {});
-    pagosApi.config().then((c) => setPagos({ habilitados: c.habilitados, abono_porcentaje: c.abono_porcentaje })).catch(() => {});
   }, []);
 
   const categorias = useMemo(() => Array.from(new Set(servicios.map((s) => s.categoria))), [servicios]);
@@ -168,8 +163,6 @@ export default function BookingPage() {
     } catch { /* silencioso */ }
   };
 
-  const montoAbono = Math.round(precioTotal * (pagos.abono_porcentaje / 100));
-
   const confirmar = async () => {
     if (!datos.documento_cliente) return toast.error('Ingresa tu documento.');
     if (!datos.nombre_cliente || !datos.telefono_cliente) return toast.error('Ingresa tu nombre y teléfono.');
@@ -185,13 +178,6 @@ export default function BookingPage() {
     };
     setEnviando(true);
     try {
-      // Con pagos habilitados: crea la cita y redirige al checkout de Wompi
-      if (pagos.habilitados) {
-        const r = await pagosApi.iniciar({ ...payload, tipo_pago: tipoPago });
-        window.location.href = r.checkout_url;
-        return;
-      }
-      // Sin pagos: reserva directa
       await citasApi.crearPublic(payload);
       setListo(true);
     } catch (e) {
@@ -387,30 +373,7 @@ export default function BookingPage() {
                 <Input label="Teléfono / WhatsApp *" value={datos.telefono_cliente} onChange={(e) => setDatos({ ...datos, telefono_cliente: e.target.value })} placeholder="300 000 0000" />
                 <Textarea label="Comentarios (opcional)" rows={3} value={datos.comentarios_cliente} onChange={(e) => setDatos({ ...datos, comentarios_cliente: e.target.value })} placeholder="¿Algo que debamos saber?" />
 
-                {pagos.habilitados && (
-                  <div>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">¿Cómo quieres pagar?</p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <button type="button" onClick={() => setTipoPago('ABONO')}
-                        className={`rounded-2xl border p-4 text-left transition ${tipoPago === 'ABONO' ? 'border-gold bg-gold/10' : 'border-white/10 hover:border-gold/40'}`}>
-                        <p className="font-semibold text-white">Abono {pagos.abono_porcentaje}%</p>
-                        <p className="font-display text-lg font-bold text-gold">{formatCOP(montoAbono)}</p>
-                        <p className="text-xs text-gray-500">Saldo en el local: {formatCOP(precioTotal - montoAbono)}</p>
-                      </button>
-                      <button type="button" onClick={() => setTipoPago('TOTAL')}
-                        className={`rounded-2xl border p-4 text-left transition ${tipoPago === 'TOTAL' ? 'border-gold bg-gold/10' : 'border-white/10 hover:border-gold/40'}`}>
-                        <p className="font-semibold text-white">Pago total</p>
-                        <p className="font-display text-lg font-bold text-gold">{formatCOP(precioTotal)}</p>
-                        <p className="text-xs text-gray-500">Pagas todo ahora</p>
-                      </button>
-                    </div>
-                    <p className="mt-2 text-center text-[11px] text-gray-500">Pago seguro con Wompi: tarjeta, PSE, Nequi y transferencia.</p>
-                  </div>
-                )}
-
-                <Button loading={enviando} onClick={confirmar} className="w-full text-base">
-                  {pagos.habilitados ? `Pagar ${formatCOP(tipoPago === 'TOTAL' ? precioTotal : montoAbono)} y reservar` : 'Confirmar reserva'}
-                </Button>
+                <Button loading={enviando} onClick={confirmar} className="w-full text-base">Confirmar reserva</Button>
               </div>
             </Step>
           )}

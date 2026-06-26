@@ -12,10 +12,9 @@ type Periodo = 'DIA' | 'SEMANA' | 'MES';
 interface Pago {
   id: number; fecha: string; hora_inicio: string | null;
   nombre_cliente: string; servicio: string | null; profesional: string | null;
-  tipo_pago: string; estado_pago: string; estado: string;
-  total: number; online: number; local: number; pendiente: number; metodo_local: string | null;
+  metodo: string | null; total: number;
 }
-interface Reportes { historialPagos: Pago[]; total: number; totalOnline: number; totalLocal: number; totalPendiente: number; }
+interface Reportes { historialPagos: Pago[]; total: number; }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 function rangoPeriodo(p: Periodo): { desde: string; hasta: string } {
@@ -29,19 +28,6 @@ function rangoPeriodo(p: Periodo): { desde: string; hasta: string } {
   return { desde: ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: ymd(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0)) };
 }
 const periodoLabel: Record<Periodo, string> = { DIA: 'Hoy', SEMANA: 'Esta semana', MES: 'Este mes' };
-
-// Comisión que cobra Wompi por una transacción online: (Valor x 2.63% + 700) + 19% IVA
-function comisionWompi(valor: number): number {
-  if (!valor || valor <= 0) return 0;
-  return Math.round((valor * 0.0263 + 700) * 1.19);
-}
-
-// Texto corto de "falta / resto" para cada fila
-function restoTexto(p: Pago): string {
-  if (p.pendiente > 0) return `Falta ${formatCOP(p.pendiente)}`;
-  if (p.local > 0) return `${formatCOP(p.local)}${p.metodo_local ? ` (${p.metodo_local})` : ''}`;
-  return '✓ Pagado';
-}
 
 export default function ReceiptPage() {
   const { user } = useAuth();
@@ -75,8 +61,6 @@ export default function ReceiptPage() {
 
   const imprimir = () => {
     if (!data) return;
-    const comisionTotal = data.historialPagos.reduce((a, p) => a + comisionWompi(p.online), 0);
-    const netoOnline = data.totalOnline - comisionTotal;
     const logo = `${location.origin}/img/logo.png`;
     const filas = data.historialPagos.map((p) => `
       <tr>
@@ -84,8 +68,7 @@ export default function ReceiptPage() {
         <td>${p.nombre_cliente || ''}</td>
         <td>${p.servicio || ''}</td>
         <td>${p.profesional || ''}</td>
-        <td class="r">${p.online > 0 ? formatCOP(p.online) : '—'}</td>
-        <td class="r">${restoTexto(p)}</td>
+        <td>${p.metodo || '—'}</td>
         <td class="r"><b>${formatCOP(p.total)}</b></td>
       </tr>`).join('');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Recibo · ${negocio}</title>
@@ -104,8 +87,8 @@ export default function ReceiptPage() {
         td.r,th.r{text-align:right}
         .mut{color:#888;font-size:10px}
         .tot{margin-top:18px;margin-left:auto;width:300px}
-        .tot .row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px dashed #ddd}
-        .tot .grand{border-top:2px solid #caa24a;border-bottom:none;margin-top:4px;padding-top:8px;font-size:16px}
+        .tot .row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+        .tot .grand{border-top:2px solid #caa24a;margin-top:4px;padding-top:8px;font-size:16px}
         .tot .grand b{color:#8a6d1f}
         .foot{margin-top:24px;text-align:center;font-size:10px;color:#999}
       </style></head><body>
@@ -121,19 +104,13 @@ export default function ReceiptPage() {
       </div>
       <table>
         <thead><tr>
-          <th>Fecha / Hora</th><th>Cliente</th><th>Servicio</th><th>Profesional</th>
-          <th class="r">Pagó online</th><th class="r">Falta / resto</th><th class="r">Total</th>
+          <th>Fecha / Hora</th><th>Cliente</th><th>Servicio</th><th>Profesional</th><th>Método</th><th class="r">Total</th>
         </tr></thead>
-        <tbody>${filas || '<tr><td colspan="7" style="text-align:center;color:#999;padding:18px">Sin pagos en el periodo.</td></tr>'}</tbody>
+        <tbody>${filas || '<tr><td colspan="6" style="text-align:center;color:#999;padding:18px">Sin pagos en el periodo.</td></tr>'}</tbody>
       </table>
       <div class="tot">
-        <div class="row"><span>Pagado online (Wompi)</span><span>${formatCOP(data.totalOnline)}</span></div>
-        <div class="row"><span>Comisión online (Wompi)</span><span>-${formatCOP(comisionTotal)}</span></div>
-        <div class="row"><span>Neto online (después de comisión)</span><span>${formatCOP(netoOnline)}</span></div>
-        <div class="row"><span>Cobrado en el local</span><span>${formatCOP(data.totalLocal)}</span></div>
-        ${data.totalPendiente > 0 ? `<div class="row"><span>Pendiente por cobrar</span><span>${formatCOP(data.totalPendiente)}</span></div>` : ''}
+        <div class="row"><span>Citas cobradas</span><span>${data.historialPagos.length}</span></div>
         <div class="row grand"><b>TOTAL RECIBIDO</b><b>${formatCOP(data.total)}</b></div>
-        <div class="row" style="border:none;color:#888;font-size:11px"><span>Neto real (sin comisión Wompi)</span><span>${formatCOP(data.total - comisionTotal)}</span></div>
       </div>
       <p class="foot">Recibo generado el ${formatFecha(ymd(new Date()))} · ${negocio}</p>
       <script>window.onload=function(){setTimeout(function(){window.print()},300);}</script>
@@ -175,7 +152,7 @@ export default function ReceiptPage() {
         </div>
       </Card>
 
-      {/* Vista previa del recibo (con los colores de la marca) */}
+      {/* Vista previa del recibo */}
       {loading || !data ? <LoadingSpinner /> : (
         <Card className="!p-0 overflow-hidden">
           {/* Cabecera con logo y nombre */}
@@ -202,8 +179,7 @@ export default function ReceiptPage() {
                     <th className="px-4 py-3">Cliente</th>
                     <th className="px-4 py-3">Servicio</th>
                     <th className="px-4 py-3">Profesional</th>
-                    <th className="px-4 py-3 text-right">Pagó online</th>
-                    <th className="px-4 py-3 text-right">Falta / resto</th>
+                    <th className="px-4 py-3">Método</th>
                     <th className="px-4 py-3 text-right">Total</th>
                   </tr>
                 </thead>
@@ -214,8 +190,7 @@ export default function ReceiptPage() {
                       <td className="px-4 py-3 font-medium text-white">{p.nombre_cliente}</td>
                       <td className="px-4 py-3 text-gray-300">{p.servicio || '—'}</td>
                       <td className="px-4 py-3 text-gray-300">{p.profesional || '—'}</td>
-                      <td className="px-4 py-3 text-right">{p.online > 0 ? <span className="font-semibold text-green-300">{formatCOP(p.online)}</span> : <span className="text-gray-600">—</span>}</td>
-                      <td className="px-4 py-3 text-right">{p.pendiente > 0 ? <span className="font-semibold text-yellow-300">Falta {formatCOP(p.pendiente)}</span> : p.local > 0 ? <span className="text-gray-200">{formatCOP(p.local)} <span className="text-xs text-gray-500">{p.metodo_local || ''}</span></span> : <span className="text-xs font-semibold text-green-400">✓ Pagado</span>}</td>
+                      <td className="px-4 py-3 text-gray-300">{p.metodo || '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-gold">{formatCOP(p.total)}</td>
                     </tr>
                   ))}
@@ -224,21 +199,11 @@ export default function ReceiptPage() {
             </div>
           ) : <p className="px-5 py-10 text-center text-sm text-gray-500">Sin pagos en el periodo seleccionado.</p>}
 
-          {/* Totales */}
-          {(() => {
-            const comisionTotal = data.historialPagos.reduce((a, p) => a + comisionWompi(p.online), 0);
-            return (
-              <div className="flex flex-col items-end gap-1 border-t border-white/10 px-5 py-4 text-sm">
-                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Pagado online</span><span className="text-green-300">{formatCOP(data.totalOnline)}</span></div>
-                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Comisión online (Wompi)</span><span className="text-red-300">-{formatCOP(comisionTotal)}</span></div>
-                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Neto online (después de comisión)</span><span className="text-gray-200">{formatCOP(data.totalOnline - comisionTotal)}</span></div>
-                <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Cobrado en el local</span><span className="text-gray-200">{formatCOP(data.totalLocal)}</span></div>
-                {data.totalPendiente > 0 && <div className="flex w-full max-w-sm justify-between text-gray-400"><span>Pendiente por cobrar</span><span className="text-yellow-300">{formatCOP(data.totalPendiente)}</span></div>}
-                <div className="mt-1 flex w-full max-w-sm justify-between border-t border-gold/40 pt-2 font-display text-base font-bold"><span className="text-white">Total recibido</span><span className="text-gold">{formatCOP(data.total)}</span></div>
-                <div className="flex w-full max-w-sm justify-between text-xs text-gray-500"><span>Neto real (sin comisión Wompi)</span><span>{formatCOP(data.total - comisionTotal)}</span></div>
-              </div>
-            );
-          })()}
+          {/* Total */}
+          <div className="flex flex-col items-end gap-1 border-t border-white/10 px-5 py-4 text-sm">
+            <div className="flex w-full max-w-xs justify-between text-gray-400"><span>Citas cobradas</span><span className="text-gray-200">{data.historialPagos.length}</span></div>
+            <div className="mt-1 flex w-full max-w-xs justify-between border-t border-gold/40 pt-2 font-display text-base font-bold"><span className="text-white">Total recibido</span><span className="text-gold">{formatCOP(data.total)}</span></div>
+          </div>
         </Card>
       )}
     </div>

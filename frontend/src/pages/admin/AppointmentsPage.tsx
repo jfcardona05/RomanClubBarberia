@@ -123,13 +123,7 @@ export default function AppointmentsPage() {
                   <Row icon={CalendarClock} value={`${formatFecha(c.fecha)} · ${formatHora(c.hora_inicio)} - ${formatHora(c.hora_fin)}`} />
                   <Row icon={User} value={c.empleado_nombre || 'Sin asignar'} />
                   <Row icon={DollarSign} value={formatCOP(c.precio_final ?? c.precio_estimado ?? 0)} />
-                  <Row icon={CreditCard} value={
-                    c.estado_pago === 'PAGADO' ? `Pagó TODO online: ${formatCOP(c.monto_pagado)}`
-                    : c.estado_pago === 'ABONADO' ? `Abonó online ${formatCOP(c.monto_pagado)} · falta ${formatCOP((c.monto_total || 0) - (c.monto_pagado || 0))} en el local`
-                    : c.estado_pago === 'PENDIENTE' ? 'Pago en proceso…'
-                    : c.estado_pago === 'FALLIDO' ? 'Pago fallido'
-                    : 'Reserva manual (llamada/WhatsApp) · cobrar en el local'
-                  } />
+                  <Row icon={CreditCard} value={c.estado === 'COMPLETADA' ? 'Cobrada' : 'Se cobra en el local'} />
                 </div>
 
                 {c.comentarios_cliente && (
@@ -400,15 +394,9 @@ function CitaFormModal({ cita, servicios, empleados, isAdmin, onClose, onSaved }
   );
 }
 
-// ---------- Modal completar (se adapta al estado de pago) ----------
+// ---------- Modal completar (registra precio cobrado + método en el local) ----------
 function CompletarModal({ cita, onClose, onSaved }: { cita: Cita; onClose: () => void; onSaved: () => void }) {
   const toast = useToast();
-  const pagadoTotal = cita.estado_pago === 'PAGADO';
-  const abonado = cita.estado_pago === 'ABONADO';
-  const total = Number(cita.monto_total ?? cita.precio_estimado ?? 0);
-  const yaPagado = Number(cita.monto_pagado ?? 0);
-  const saldo = Math.max(0, total - yaPagado);
-
   const [precio, setPrecio] = useState((cita.precio_estimado ?? '').toString());
   const [metodo, setMetodo] = useState('EFECTIVO');
   const [obs, setObs] = useState('');
@@ -417,13 +405,7 @@ function CompletarModal({ cita, onClose, onSaved }: { cita: Cita; onClose: () =>
   const guardar = async () => {
     setLoading(true);
     try {
-      // PAGADO online: precio = total, método online. ABONADO: precio = total, método del saldo.
-      // NO_APLICA: precio + método ingresados.
-      const payload = pagadoTotal
-        ? { precio_final: total, metodo_pago: 'OTRO', observaciones: obs || 'Pagado en línea (Wompi)' }
-        : abonado
-          ? { precio_final: total, metodo_pago: metodo, observaciones: obs || `Abonó ${formatCOP(yaPagado)} online, saldo ${formatCOP(saldo)} en ${metodo}` }
-          : { precio_final: precio ? Number(precio) : undefined, metodo_pago: metodo, observaciones: obs };
+      const payload = { precio_final: precio ? Number(precio) : undefined, metodo_pago: metodo, observaciones: obs };
       await citasApi.completar(cita.id_cita, payload);
       toast.success('Cita atendida · pago registrado en Pagos y reportes');
       onSaved();
@@ -436,32 +418,10 @@ function CompletarModal({ cita, onClose, onSaved }: { cita: Cita; onClose: () =>
       <div className="space-y-4">
         <p className="text-sm text-gray-400">Cliente: <span className="text-white">{cita.nombre_cliente}</span></p>
 
-        {pagadoTotal && (
-          <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
-            ✓ Ya pagó el <b>total online</b>: {formatCOP(yaPagado)}. Solo confirma que lo atendiste.
-          </div>
-        )}
-
-        {abonado && (
-          <>
-            <div className="rounded-xl border border-gold/30 bg-gold/10 p-3 text-sm">
-              <p className="text-gray-300">Abonó online: <span className="font-semibold text-gold">{formatCOP(yaPagado)}</span></p>
-              <p className="text-gray-300">Saldo a cobrar ahora: <span className="font-semibold text-white">{formatCOP(saldo)}</span></p>
-            </div>
-            <Select label="¿Cómo pagó el saldo?" value={metodo} onChange={(e) => setMetodo(e.target.value)}>
-              {['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'TARJETA', 'OTRO'].map((m) => <option key={m} value={m}>{m}</option>)}
-            </Select>
-          </>
-        )}
-
-        {!pagadoTotal && !abonado && (
-          <>
-            <Input label="Precio cobrado (COP)" type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="0" />
-            <Select label="Método de pago" value={metodo} onChange={(e) => setMetodo(e.target.value)}>
-              {['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'TARJETA', 'OTRO'].map((m) => <option key={m} value={m}>{m}</option>)}
-            </Select>
-          </>
-        )}
+        <Input label="Precio cobrado (COP)" type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="0" />
+        <Select label="Método de pago" value={metodo} onChange={(e) => setMetodo(e.target.value)}>
+          {['EFECTIVO', 'TRANSFERENCIA', 'NEQUI', 'DAVIPLATA', 'TARJETA', 'OTRO'].map((m) => <option key={m} value={m}>{m}</option>)}
+        </Select>
 
         <Textarea label="Observaciones" rows={2} value={obs} onChange={(e) => setObs(e.target.value)} />
         <div className="flex justify-end gap-3 pt-2">

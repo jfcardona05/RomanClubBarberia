@@ -11,10 +11,9 @@ type Periodo = 'DIA' | 'SEMANA' | 'MES';
 interface Pago {
   id: number; fecha: string; hora_inicio: string | null;
   nombre_cliente: string; servicio: string | null; profesional: string | null;
-  tipo_pago: string; estado_pago: string; estado: string;
-  total: number; online: number; local: number; pendiente: number; metodo_local: string | null;
+  metodo: string | null; total: number;
 }
-interface Reportes { historialPagos: Pago[]; total: number; totalOnline: number; totalLocal: number; totalPendiente: number; }
+interface Reportes { historialPagos: Pago[]; total: number; }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 function rangoPeriodo(p: Periodo): { desde: string; hasta: string } {
@@ -61,7 +60,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-white">Pagos e ingresos</h1>
-        <p className="text-sm text-gray-400">{isAdmin ? 'Cuánto pagó cada cliente en línea, cuánto faltó y el total.' : 'Tu historial de pagos.'}</p>
+        <p className="text-sm text-gray-400">{isAdmin ? 'Citas completadas: cuánto se cobró y con qué método.' : 'Tu historial de pagos.'}</p>
       </div>
 
       {/* Filtros */}
@@ -91,13 +90,17 @@ export default function ReportsPage() {
         </div>
       </Card>
 
-      {/* Resumen rápido */}
+      {/* Resumen */}
       {data && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <ResumenCard label="Pagado online" value={data.totalOnline} color="text-green-300" hint="Por la página (Wompi)" />
-          <ResumenCard label="Cobrado en el local" value={data.totalLocal} color="text-gray-100" hint="Efectivo / otros" />
-          <ResumenCard label="Pendiente por cobrar" value={data.totalPendiente} color="text-yellow-300" hint="Abonos sin completar" />
-          <ResumenCard label="Total recibido" value={data.total} color="text-gold" hint="Online + local" big />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-gray-500">Citas cobradas</p>
+            <p className="mt-1 font-display text-2xl font-bold text-gray-100">{data.historialPagos.length}</p>
+          </Card>
+          <Card className="bg-gradient-to-br from-gold/10 to-transparent">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Total recibido</p>
+            <p className="mt-1 font-display text-2xl font-bold text-gold">{formatCOP(data.total)}</p>
+          </Card>
         </div>
       )}
 
@@ -116,8 +119,7 @@ export default function ReportsPage() {
                     <th className="px-4 py-3">Cliente</th>
                     <th className="px-4 py-3">Servicio</th>
                     <th className="px-4 py-3">Profesional</th>
-                    <th className="px-4 py-3 text-right">Pagó online</th>
-                    <th className="px-4 py-3 text-right">Falta / resto</th>
+                    <th className="px-4 py-3">Método</th>
                     <th className="px-4 py-3 text-right">Total</th>
                   </tr>
                 </thead>
@@ -131,22 +133,7 @@ export default function ReportsPage() {
                       <td className="px-4 py-3 font-medium text-white">{p.nombre_cliente}</td>
                       <td className="px-4 py-3 text-gray-300">{p.servicio || '—'}</td>
                       <td className="px-4 py-3 text-gray-300">{p.profesional || '—'}</td>
-                      {/* Pagó online */}
-                      <td className="px-4 py-3 text-right">
-                        {p.online > 0
-                          ? <span className="font-semibold text-green-300">{formatCOP(p.online)}</span>
-                          : <span className="text-gray-600">—</span>}
-                      </td>
-                      {/* Falta / resto */}
-                      <td className="px-4 py-3 text-right">
-                        {p.pendiente > 0 ? (
-                          <span className="font-semibold text-yellow-300">Falta {formatCOP(p.pendiente)}</span>
-                        ) : p.local > 0 ? (
-                          <span className="text-gray-200">{formatCOP(p.local)} <span className="text-xs text-gray-500">{p.metodo_local || ''}</span></span>
-                        ) : (
-                          <span className="text-xs font-semibold text-green-400">✓ Todo pagado</span>
-                        )}
-                      </td>
+                      <td className="px-4 py-3 text-gray-300">{p.metodo || '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-gold">{formatCOP(p.total)}</td>
                     </tr>
                   ))}
@@ -157,15 +144,5 @@ export default function ReportsPage() {
         </Card>
       )}
     </div>
-  );
-}
-
-function ResumenCard({ label, value, color, hint, big }: { label: string; value: number; color: string; hint: string; big?: boolean }) {
-  return (
-    <Card className={big ? 'bg-gradient-to-br from-gold/10 to-transparent' : ''}>
-      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 font-display text-2xl font-bold ${color}`}>{formatCOP(value)}</p>
-      <p className="mt-0.5 text-[11px] text-gray-500">{hint}</p>
-    </Card>
   );
 }

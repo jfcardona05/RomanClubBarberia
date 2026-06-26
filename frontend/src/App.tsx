@@ -5,7 +5,6 @@ import { ProtectedRoute } from './routes/ProtectedRoute';
 import PublicLayout from './layouts/PublicLayout';
 import HomePage from './pages/public/HomePage';
 import BookingPage from './pages/public/BookingPage';
-import PagoPage from './pages/public/PagoPage';
 
 // Admin
 import LoginPage from './pages/admin/LoginPage';
@@ -31,7 +30,6 @@ export default function App() {
 
       {/* ---- Reserva de citas (página dedicada) ---- */}
       <Route path="/reservar" element={<BookingPage />} />
-      <Route path="/pago" element={<PagoPage />} />
 
       {/* ---- Login ---- */}
       <Route path="/admin/login" element={<LoginPage />} />

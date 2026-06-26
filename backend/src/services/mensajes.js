@@ -35,22 +35,6 @@ export function msgConfirmacion({ nombre, fecha, hora, servicios, profesional })
 
 const cop = (n) => Number(n || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
-// Confirmación cuando la cita se pagó online (abono o total)
-export function msgConfirmacionPago({ nombre, fecha, hora, servicios, profesional, tipo_pago, monto_pagado, saldo }) {
-  const serv = servicios ? `\n💈 Servicio: ${servicios}` : '';
-  const prof = profesional ? `\n👤 Te atiende: ${profesional}` : '';
-  const pago = tipo_pago === 'TOTAL'
-    ? `\n💳 Pago recibido: ${cop(monto_pagado)} (pago completo) ✅`
-    : `\n💳 Abono recibido: ${cop(monto_pagado)}\n💵 Saldo a pagar en el local: ${cop(saldo)}`;
-  return (
-    `¡Hola ${nombre}! 👋\n\n` +
-    `Tu cita en *${NEGOCIO}* quedó *confirmada* ✅${serv}${prof}\n` +
-    `🗓️ ${fechaLarga(fecha)}\n` +
-    `🕒 ${hora12(hora)}${pago}\n\n` +
-    `¡Te esperamos!`
-  );
-}
-
 export function msgRecordatorio1h({ nombre, hora, servicios, profesional }) {
   const serv = servicios ? ` (${servicios})` : '';
   const prof = profesional ? ` con ${profesional}` : '';

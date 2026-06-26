@@ -17,7 +17,6 @@ async function revisarConfirmacionesPendientes() {
       FROM citas c
       LEFT JOIN usuarios u ON u.id_usuario = c.id_empleado
       WHERE c.confirmacion_enviada = 0 AND c.estado <> 'CANCELADA' AND c.fecha >= CURDATE()
-        AND c.estado_pago NOT IN ('PENDIENTE','FALLIDO')
         AND c.fecha_creacion < (NOW() - INTERVAL 2 MINUTE)
     `);
     for (const c of citas) {
@@ -73,20 +72,7 @@ async function revisarRecordatorios() {
   }
 }
 
-// Limpia reservas que iniciaron pago pero nunca se completaron (no generan cita)
-async function limpiarReservasAbandonadas() {
-  try {
-    await pool.query(`
-      DELETE FROM reservas_pendientes
-      WHERE estado <> 'PAGADA' AND fecha_creacion < (NOW() - INTERVAL 1 HOUR)
-    `);
-  } catch (e) {
-    console.error('❌ Error limpiando reservas abandonadas:', e.message);
-  }
-}
-
 async function tick() {
-  await limpiarReservasAbandonadas();      // reservas sin pagar (no generan cita)
   await revisarConfirmacionesPendientes(); // confirmaciones que no salieron
   await revisarRecordatorios();            // recordatorios 1h y 20min
 }

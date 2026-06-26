@@ -96,7 +96,7 @@ export const resumen = asyncHandler(async (req, res) => {
   });
 });
 
-// GET /api/dashboard/reportes - HISTORIAL DE PAGOS unificado (local + Wompi)
+// GET /api/dashboard/reportes - HISTORIAL DE PAGOS (citas completadas, cobro en el local)
 // El EMPLEADO solo ve lo suyo (se fuerza su id_empleado).
 export const reportes = asyncHandler(async (req, res) => {
   const esEmpleado = req.user.rol === 'EMPLEADO';
@@ -109,12 +109,8 @@ export const reportes = asyncHandler(async (req, res) => {
       FROM cita_servicios cs JOIN servicios sv ON sv.id_servicio = cs.id_servicio
      WHERE cs.id_cita = c.id_cita)`;
 
-  // UNA fila por cita (no separadas): muestra abono online + resto en local + método del resto.
-  // Incluye citas completadas y/o con pago en línea. NUNCA canceladas.
-  const w = [
-    "c.estado <> 'CANCELADA'",
-    "(c.estado = 'COMPLETADA' OR c.estado_pago IN ('ABONADO','PAGADO'))",
-  ];
+  // UNA fila por cita completada: total cobrado + método de pago en el local.
+  const w = ["c.estado = 'COMPLETADA'"];
   const p = [];
   if (desde) { w.push('c.fecha >= ?'); p.push(desde); }
   if (hasta) { w.push('c.fecha <= ?'); p.push(hasta); }
@@ -123,10 +119,10 @@ export const reportes = asyncHandler(async (req, res) => {
   if (idServicio) { w.push('EXISTS (SELECT 1 FROM cita_servicios cz WHERE cz.id_cita = c.id_cita AND cz.id_servicio = ?)'); p.push(idServicio); }
 
   const [rows] = await pool.query(`
-    SELECT c.id_cita AS id, c.nombre_cliente, c.fecha, c.hora_inicio, c.estado, c.tipo_pago, c.estado_pago,
-           c.monto_pagado AS online, c.monto_total AS monto_total_cita,
+    SELECT c.id_cita AS id, c.nombre_cliente, c.fecha, c.hora_inicio,
+           c.monto_total AS monto_total_cita,
            u.nombre AS profesional, ${SERVICIOS_SUB} AS servicio,
-           sr.total_cobrado, sr.metodo AS metodo_local
+           sr.total_cobrado, sr.metodo
     FROM citas c
     LEFT JOIN usuarios u ON u.id_usuario = c.id_empleado
     LEFT JOIN (
@@ -139,25 +135,14 @@ export const reportes = asyncHandler(async (req, res) => {
     LIMIT 200
   `, p);
 
-  const historialPagos = rows.map((r) => {
-    const completada = r.estado === 'COMPLETADA';
-    const total = Number(completada ? (r.total_cobrado ?? r.monto_total_cita) : r.monto_total_cita) || 0;
-    const online = Number(r.online || 0);                       // pagado por Wompi (abono o total)
-    const local = completada ? Math.max(0, total - online) : 0; // resto cobrado en el local
-    const pendiente = completada ? 0 : Math.max(0, total - online); // saldo aún sin cobrar
-    return {
-      id: r.id, fecha: r.fecha, hora_inicio: r.hora_inicio, nombre_cliente: r.nombre_cliente,
-      servicio: r.servicio, profesional: r.profesional, tipo_pago: r.tipo_pago, estado_pago: r.estado_pago, estado: r.estado,
-      total, online, local, pendiente,
-      metodo_local: local > 0 ? r.metodo_local : null,
-      recibido: online + local,
-    };
-  });
+  const historialPagos = rows.map((r) => ({
+    id: r.id, fecha: r.fecha, hora_inicio: r.hora_inicio, nombre_cliente: r.nombre_cliente,
+    servicio: r.servicio, profesional: r.profesional,
+    metodo: r.metodo || null,
+    total: Number(r.total_cobrado ?? r.monto_total_cita) || 0,
+  }));
 
-  const total = historialPagos.reduce((a, r) => a + r.recibido, 0);
-  const totalOnline = historialPagos.reduce((a, r) => a + r.online, 0);
-  const totalLocal = historialPagos.reduce((a, r) => a + r.local, 0);
-  const totalPendiente = historialPagos.reduce((a, r) => a + r.pendiente, 0);
+  const total = historialPagos.reduce((a, r) => a + r.total, 0);
 
-  res.json({ ok: true, data: { historialPagos, total, totalOnline, totalLocal, totalPendiente } });
+  res.json({ ok: true, data: { historialPagos, total } });
 });

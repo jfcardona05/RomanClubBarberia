@@ -94,15 +94,6 @@ export const inventarioApi = {
   alertas: () => api.get('/inventario/alertas').then((r) => r.data.data as Producto[]),
 };
 
-// ---------- PAGOS (Wompi) ----------
-export const pagosApi = {
-  config: () => api.get('/pagos/config').then((r) => r.data as { ok: boolean; habilitados: boolean; abono_porcentaje: number; public_key: string }),
-  iniciar: (data: Record<string, unknown>) =>
-    api.post('/pagos/iniciar', data).then((r) => r.data as { ok: boolean; checkout_url: string; referencia: string; monto: number; total: number; tipo_pago: string }),
-  confirmar: (id: string) => api.post('/pagos/confirmar', { id }).then((r) => r.data),
-  estado: (ref: string) => api.get('/pagos/estado', { params: { ref } }).then((r) => r.data),
-};
-
 // ---------- WHATSAPP ----------
 export const whatsappApi = {
   estado: () => api.get('/whatsapp/estado').then((r) => r.data as { ok: boolean; conectado: boolean; qr: string | null; iniciando: boolean }),

@@ -9,7 +9,6 @@ import configuracionRoutes from './configuracion.routes.js';
 import inventarioRoutes from './inventario.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import whatsappRoutes from './whatsapp.routes.js';
-import pagosRoutes from './pagos.routes.js';
 
 const router = Router();
 
@@ -25,6 +24,5 @@ router.use('/configuracion', configuracionRoutes);
 router.use('/inventario', inventarioRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/whatsapp', whatsappRoutes);
-router.use('/pagos', pagosRoutes);
 
 export default router;
