@@ -161,20 +161,6 @@ export default function ReportsPage() {
         </div>
       </Card>
 
-      {/* Resumen */}
-      {data && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Citas cobradas</p>
-            <p className="mt-1 font-display text-2xl font-bold text-gray-100">{data.historialPagos.length}</p>
-          </Card>
-          <Card className="bg-gradient-to-br from-gold/10 to-transparent">
-            <p className="text-xs uppercase tracking-wide text-gray-500">Total recibido</p>
-            <p className="mt-1 font-display text-2xl font-bold text-gold">{formatCOP(data.total)}</p>
-          </Card>
-        </div>
-      )}
-
       {loading || !data ? <LoadingSpinner /> : (
         <Card className="!p-0 overflow-hidden">
           <div className="border-b border-white/10 px-5 py-4">

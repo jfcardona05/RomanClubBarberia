@@ -1,11 +1,19 @@
-// Servicio de WhatsApp usando whatsapp-web.js (sesión del barbero, gratis).
-// Mantiene una única sesión persistente (LocalAuth) y expone enviar/estado.
-import wweb from 'whatsapp-web.js';
+// Servicio de WhatsApp con Baileys (NO usa navegador/Chromium -> liviano).
+// Mantiene una única sesión persistente y expone enviar/estado.
+import { rm } from 'fs/promises';
+import baileys, {
+  useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers,
+} from '@whiskeysockets/baileys';
+import pino from 'pino';
 import QRCode from 'qrcode';
 
-const { Client, LocalAuth } = wweb;
+// Interop CommonJS->ESM: el default export real es la función makeWASocket
+const makeWASocket = baileys.default || baileys;
 
-let client = null;
+const logger = pino({ level: 'silent' }); // sin ruido en consola
+const AUTH_DIR = process.env.WHATSAPP_AUTH_PATH || './.baileys_auth';
+
+let sock = null;
 let conectado = false;
 let ultimoQr = null;   // dataURL del QR para mostrar en el panel
 let iniciando = false;
@@ -26,67 +34,75 @@ export function getEstado() {
 
 // Arranca el cliente (idempotente). No tumba el servidor si falla.
 export function iniciarWhatsapp() {
-  if (client || iniciando) return;
+  if (sock || iniciando) return;
   iniciando = true;
-  try {
-    client = new Client({
-      // dataPath: en producción apunta a un volumen para no perder la sesión al redeployar
-      authStrategy: new LocalAuth({ clientId: 'roman-club', dataPath: process.env.WWEBJS_PATH || undefined }),
-      puppeteer: {
-        headless: true,
-        // executablePath: en Railway/Docker usa el Chromium del sistema (PUPPETEER_EXECUTABLE_PATH)
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: [
-          '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
-          '--disable-gpu', '--no-zygote', '--single-process',
-        ],
-      },
-    });
+  arrancar().catch((e) => {
+    iniciando = false;
+    console.error('❌ No se pudo iniciar WhatsApp:', e.message);
+  });
+}
 
-    client.on('qr', async (qr) => {
+async function arrancar() {
+  const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+  let version;
+  try { ({ version } = await fetchLatestBaileysVersion()); } catch { /* usa la por defecto */ }
+
+  sock = makeWASocket({
+    version,
+    auth: state,
+    logger,
+    browser: Browsers.appropriate('Chrome'),
+    markOnlineOnConnect: false,
+    syncFullHistory: false,
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('connection.update', async (u) => {
+    const { connection, lastDisconnect, qr } = u;
+
+    if (qr) {
       try { ultimoQr = await QRCode.toDataURL(qr); } catch { /* ignore */ }
       conectado = false;
       console.log('📱 WhatsApp: escanea el QR desde el panel (Admin → WhatsApp)');
-    });
+    }
 
-    client.on('ready', () => {
+    if (connection === 'open') {
       conectado = true;
       ultimoQr = null;
+      iniciando = false;
       console.log('✅ WhatsApp conectado y listo para enviar mensajes');
-    });
+    }
 
-    client.on('authenticated', () => { ultimoQr = null; });
-
-    client.on('disconnected', async () => {
+    if (connection === 'close') {
       conectado = false;
-      console.log('⚠️ WhatsApp se desconectó, intentando reconectar…');
-      try { await client.destroy(); } catch { /* ignore */ }
-      client = null;
+      sock = null;
       iniciando = false;
-      // Reintenta: si la sesión sigue válida reconecta sin QR; si no, muestra QR
-      setTimeout(() => iniciarWhatsapp(), 5000);
-    });
-
-    client.initialize().catch((e) => {
-      iniciando = false;
-      console.error('❌ No se pudo iniciar WhatsApp:', e.message);
-    });
-  } catch (e) {
-    iniciando = false;
-    console.error('❌ Error creando cliente de WhatsApp:', e.message);
-  }
+      const code = lastDisconnect?.error?.output?.statusCode;
+      if (code === DisconnectReason.loggedOut) {
+        // Sesión cerrada (desvinculada): borra credenciales y vuelve a generar QR limpio
+        console.log('⚠️ WhatsApp desvinculado. Generando un QR nuevo…');
+        try { await rm(AUTH_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
+        setTimeout(() => iniciarWhatsapp(), 2000);
+      } else {
+        // Caída temporal: reconecta con la misma sesión (sin QR)
+        console.log('⚠️ WhatsApp se desconectó, reintentando…');
+        setTimeout(() => iniciarWhatsapp(), 4000);
+      }
+    }
+  });
 }
 
-// Cierra la sesión actual (para vincular otro número)
+// Cierra la sesión actual y genera nuevo QR (para vincular otro número)
 export async function cerrarSesionWhatsapp() {
-  if (!client) return;
-  try { await client.logout(); } catch { /* ignore */ }
-  try { await client.destroy(); } catch { /* ignore */ }
-  client = null;
+  try { await sock?.logout(); } catch { /* ignore */ }
+  try { sock?.end?.(); } catch { /* ignore */ }
+  sock = null;
   conectado = false;
   ultimoQr = null;
   iniciando = false;
-  iniciarWhatsapp();
+  try { await rm(AUTH_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
+  setTimeout(() => iniciarWhatsapp(), 1500);
 }
 
 // ============================================================
@@ -105,20 +121,20 @@ let enviadosEstaHora = [];          // timestamps de envíos (para tope por hora
 const TOPE_POR_HORA = 40;           // máximo de mensajes/hora (margen de sobra para una barbería)
 
 async function enviarAhora(num, texto) {
-  // Verifica que el número exista en WhatsApp y obtiene su id real
-  const numberId = await client.getNumberId(num);
-  if (!numberId) { console.warn('⚠️ WhatsApp: el número no tiene WhatsApp:', num); return false; }
-  const chatId = numberId._serialized;
+  // Verifica que el número exista en WhatsApp y obtiene su jid real
+  const [info] = await sock.onWhatsApp(num);
+  if (!info?.exists) { console.warn('⚠️ WhatsApp: el número no tiene WhatsApp:', num); return false; }
+  const jid = info.jid;
 
   // Simula presencia + "escribiendo…" como una persona real
   try {
-    const chat = await client.getChatById(chatId);
-    await client.sendPresenceAvailable();
-    await chat.sendStateTyping();
+    await sock.presenceSubscribe(jid);
+    await sock.sendPresenceUpdate('composing', jid);
     await sleep(aleatorio(2000, 5000));
+    await sock.sendPresenceUpdate('paused', jid);
   } catch { /* no crítico */ }
 
-  await client.sendMessage(chatId, texto);
+  await sock.sendMessage(jid, { text: texto });
   console.log(`📤 WhatsApp enviado a ${num}`);
   return true;
 }
@@ -138,7 +154,7 @@ async function procesarCola() {
 
     const item = cola.shift();
     let ok = false;
-    if (conectado && client) {
+    if (conectado && sock) {
       try { ok = await enviarAhora(item.num, item.texto); }
       catch (e) { console.error('❌ Error enviando WhatsApp:', e.message); }
     }
@@ -154,7 +170,7 @@ async function procesarCola() {
 // Encola un mensaje AL CLIENTE. Devuelve una promesa true/false (cuando realmente se envía).
 export function enviarWhatsapp(telefono, texto) {
   return new Promise((resolve) => {
-    if (!conectado || !client) return resolve(false);
+    if (!conectado || !sock) return resolve(false);
     const num = normalizarTelefono(telefono);
     if (!num) { console.warn('⚠️ WhatsApp: teléfono inválido:', telefono); return resolve(false); }
     cola.push({ num, texto, resolve });

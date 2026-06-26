@@ -13,11 +13,13 @@ dist/
 **/dist/
 build/
 
-# Sesión de WhatsApp (whatsapp-web.js)
+# Sesión de WhatsApp (Baileys / whatsapp-web.js)
 .wwebjs_auth/
 .wwebjs_cache/
 **/.wwebjs_auth/
 **/.wwebjs_cache/
+.baileys_auth/
+**/.baileys_auth/
 
 # Imágenes subidas en el backend (contenido local)
 backend/src/uploads/**/*
